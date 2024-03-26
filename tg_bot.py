@@ -1,7 +1,8 @@
 import random
+import re
 import time
 
-from sqlalchemy import insert, select, exists, update
+from sqlalchemy import insert, select, exists, update, func
 from connection.db import Session, engine
 from telebot import types
 import telebot
@@ -33,31 +34,33 @@ def entered_users(message):
         else:
             bot.send_message(message.chat.id, 'Вы уже зарегались')
 
-
-
-# def handle_start(message):
-#     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-#     button1 = types.KeyboardButton('5 причин зайти на сервер ARUKU')
-#     markup.add(button1)
-#     bot.send_message(message.chat.id, "ну поехали ", reply_markup=markup)
-
-
 @bot.message_handler(commands=['coinflip'])
 
 def bet(message):
-    global user
-    user = message.from_user.id
+    global user1
+    user1 = message.from_user.id
     bot.reply_to(message, "Введите вашу ставку:")
     bot.register_next_step_handler(message, process_bet)
 
 def process_bet(message):
-    global bet_amount, new_balance, user
-    if message.from_user.id == user:
-        bet_amount = int(message.text)
-        user = message.from_user.id
+    global user1
+    if message.from_user.id != user1:
+        bot.register_next_step_handler(message, process_bet)
 
+
+    else:
+        global bet_amount, new_balance
+        bet_amount = message.text
+        try:
+            bet_amount = int(bet_amount)
+        except ValueError:
+            bot.reply_to(message, 'Введи число, а не текст!!!')
+            bot.register_next_step_handler(message, process_bet)
+            return
+
+        user1 = message.from_user.id
         with Session.begin() as session:
-            query_balance = select(Eco.balance).select_from(Eco).where(Eco.id == user)
+            query_balance = select(Eco.balance).select_from(Eco).where(Eco.id == user1)
             result = session.execute(query_balance).fetchone()
             balance_amount = result[0]
 
@@ -66,58 +69,128 @@ def process_bet(message):
             return
         else:
             new_balance = balance_amount - bet_amount
-            query_update_balance = update(Eco).values(balance = new_balance).where(Eco.id == user)
+            query_update_balance = update(Eco).values(balance = new_balance).where(Eco.id == user1)
             session.execute(query_update_balance)
             session.commit()
 
-        markup = types.ReplyKeyboardMarkup(one_time_keyboard=True)
-        markup.add(types.KeyboardButton('Орёл'), types.KeyboardButton('Новосиб'))
-        bot.reply_to(message, "Выберите орёл или новосиб:", reply_markup=markup)
-        bot.register_next_step_handler(message, process_coin_choice)
+        markup = types.InlineKeyboardMarkup(row_width=2)
+        btn1 = types.InlineKeyboardButton('Орёл', callback_data='орёл')
+        btn2 = types.InlineKeyboardButton('Новосиб', callback_data='новосиб')
+        markup.add(btn1, btn2)
+        bot.send_message(message.chat.id, "Выберите орёл или новосиб:", reply_markup=markup)
+        
 
-# def edit_moralfuck_code(message):
-#     current_user = message.chat.id
-#     bet_amount = bet_amount = int(message.text)
-
-
-def process_coin_choice(message):
+@bot.callback_query_handler(func=lambda call: True)
+def process_coin_choice(call):
     global new_balance, bet_amount
-    if message.from_user.id == user:
-        choice = message.text.lower()
+    if call.from_user.id != user1:
+        bot.register_next_step_handler(call.message, process_coin_choice)
+    else:
+        choice = call.data.lower()
         if choice not in ['орёл', 'новосиб']:
-            bot.reply_to(message, "Пожалуйста, выберите орёл или новосиб.")
+            bot.send_message(call.message.chat.id, "Пожалуйста, выберите орёл или новосиб.")
             return
 
+        bot.delete_message(call.message.chat.id, call.message.message_id)
         result = random.choice(['орёл', 'новосиб'])
         img = open('media/coinflip.gif', 'rb')
-        sent_message = bot.send_animation(message.chat.id, img)
+        sent_message = bot.send_animation(call.message.chat.id, img)
 
         time.sleep(3)
 
         if choice == result:
-            bot.reply_to(message, f'Победа! Вы выбрали {choice}, результат: {result}.')
+            bot.send_message(call.message.chat.id, f'Победа! Вы выбрали {choice}, результат: {result}.')
             with Session.begin() as session:
                 new_balance += (2*bet_amount)
-                query_update_balance = update(Eco).values(balance=new_balance).where(Eco.id == message.from_user.id)
+                query_update_balance = update(Eco).values(balance=new_balance).where(Eco.id == call.message.from_user.id)
                 session.execute(query_update_balance)
                 session.commit()
 
         else:
-            bot.reply_to(message, f'Проебал! Вы выбрали {choice}, результат: {result}.')
+            bot.send_message(call.message.chat.id, f'Проебал! Вы выбрали {choice}, результат: {result}.')
 
-        bot.delete_message(message.chat.id, sent_message.message_id)
+        bot.delete_message(call.message.chat.id, sent_message.message_id)
+
+@bot.message_handler(commands=['give'])
+def process_give_command(message):
+    # Проверяем, содержит ли сообщение аргументы для команды /give
+    match = re.match(r'/give (@?\w+) (\d+)', message.text)
+    if match:
+        username = match.group(1)  # Имя пользователя
+        amount = int(match.group(2))  # Сумма для передачи
+
+        if username.startswith('@'):
+            username = username[1:]
+
+        with Session.begin() as session:
+            user = session.query(User).filter(User.username == username).first()
+            if user:
+                sender_balance = session.query(Eco).filter(Eco.id == message.from_user.id).first()
+                if sender_balance.balance >= amount:
+                    sender_balance.balance -= amount
+                    user_balance = session.query(Eco).filter(Eco.id == user.id).first()
+                    user_balance.balance += amount
+                    session.commit()
+                    bot.reply_to(message, f"Вы успешно передали {amount} пользователю {username}")
+                else:
+                    bot.reply_to(message, "У вас недостаточно средств для этой операции.")
+            else:
+                bot.reply_to(message, f"Пользователь {username} не найден.")
+    else:
+        bot.reply_to(message, "Используйте команду следующим образом: /give <username> <amount>")
+
+
+
+
+
+@bot.message_handler(commands=['doors'])
+
+def door(message):
+    pass
+
 
 
 @bot.message_handler(commands=['balance'])
-def balance(message):
+def check_balance(message):
+    if len(message.text.split()) > 1:
+        username = message.text.split()[1]  # Имя пользователя, чей баланс нужно проверить
+    else:
+        username = None
+
+    if username:
+        if username.startswith('@'):
+            username = username[1:]
+
+        with Session.begin() as session:
+            user = session.query(User).filter(User.username == username).first()
+            if user:
+                balance = session.query(Eco.balance).filter(Eco.id == user.id).scalar()
+                bot.reply_to(message, f"Баланс пользователя {username}: {balance}")
+            else:
+                bot.reply_to(message, f"Пользователь {username} не найден.")
+    else:
+        with Session.begin() as session:
+            balance = session.query(Eco.balance).filter(Eco.id == message.from_user.id).scalar()
+            bot.reply_to(message, f"Ваш баланс: {balance}")
+
+
+@bot.message_handler(commands=['love'])
+def confess_love(message):
+    if len(message.text.split()) > 1:
+        username = message.text.split()[1]
+    else:
+        bot.reply_to(message, "Используйте команду следующим образом: /love @username")
+        return
+
+    if username.startswith('@'):
+        username = username[1:]
+
     with Session.begin() as session:
-        query_balance = select(Eco.balance).select_from(Eco).where(Eco.id == message.from_user.id)
-        result = session.execute(query_balance).fetchone()
-        balance_amount = result[0]
-        session.commit()
-        bot.reply_to(message, f'Ваш баланс:  {balance_amount} ')
-
-
+        user = session.query(User).filter(User.username == username).first()
+        if user:
+            bot.reply_to(message, f"❤️ {message.from_user.username} признается в любви {username} ❤️")
+        else:
+            bot.reply_to(message, f"Пользователь {username} не найден.")
 
 
 # Обработчик команды /help
@@ -136,9 +209,6 @@ def who_i_am(message):
 
 # Обработчик всех текстовых сообщений в беседе
 @bot.message_handler(content_types=['text'])
-#def handle_message(message):
-#    bot.send_message(message.chat.id, message.text)
-
 
 def check_word(message):
     # if message.text.lower() == 'че' or message.text.lower() == 'чё' :
@@ -173,8 +243,6 @@ def check_word(message):
     # if message.text.lower() in banword:
     #     bot.ban_chat_member(message.chat.id, message.from_user.id)
     #     bot.send_message(message.chat.id, 'Идёт нахуй')
-
-
 
 
 # Запускаем бота
