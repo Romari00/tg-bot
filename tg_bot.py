@@ -252,6 +252,10 @@ def check_balance(message):
             bot.reply_to(message, f"Ваш баланс: {balance}💰")
 
 
+@bot.message_handler(commands=['гладить'])
+def gladit(message):
+    bot.reply_to(message, 'заебись работает')
+
 @bot.message_handler(commands=['love'])
 def love_is(message):
     if len(message.text.split()) > 1:
@@ -301,12 +305,31 @@ def who_i_am(message):
             if user:
                 bot.reply_to(message, f"Сегодня {username} - {random.choice(banword)}")
             else:
-                bot.reply_to(message, f"Пользователь {username} не найден.")
+                name = session.query(User).filter(User.name == username).first()
+                if name:
+                    bot.reply_to(message, f"Сегодня {name} - {random.choice(banword)}")
+                else:
+                    bot.reply_to(message, f"Пользователь {username} не найден.")
     else:
         if message.from_user.id == 979795224:
             bot.reply_to(message, f"Сегодня {message.from_user.username} - {random.choice(special_for_Remedyv)}")
         else:
-            bot.reply_to(message, f"Сегодня {message.from_user.username} - {random.choice(banword)}")
+            with Session.begin() as session:
+                user = session.query(User).filter(User.username == message.from_user.username).first()
+                if user != None:
+                    bot.reply_to(message, f"Сегодня {message.from_user.username} - {random.choice(banword)}")
+                else:
+                    name = session.query(User).filter(User.name == message.from_user.first_name).first()
+                    if name:
+                        bot.reply_to(message, f"Сегодня {name} - {random.choice(banword)}")
+                    else:
+                        bot.reply_to(message, f"Пользователь {username} не найден.")
+
+        # else:
+        #     if not message.from_user.username:
+        #         bot.reply_to(message, f"Сегодня {message.from_user.first_name} - {random.choice(banword)}")
+        #     else:
+        #         bot.reply_to(message, f"Сегодня {message.from_user.username} - {random.choice(banword)}")
 
 # Обработчик всех текстовых сообщений в беседе
 @bot.message_handler(content_types=['text'])
