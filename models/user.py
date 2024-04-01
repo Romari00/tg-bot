@@ -1,4 +1,4 @@
-from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKey, DateTime
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 class Base(DeclarativeBase):
@@ -18,8 +18,16 @@ class Eco(Base):
 class UserTransactions(Base):
     __tablename__ = 'user_transactions'
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    transaction_amount:Mapped [int]
-    transaction_type:Mapped [str]
+    transaction_amount: Mapped[int]
+    transaction_type: Mapped[str]
     user_id: Mapped[int] = mapped_column(ForeignKey('users.id'))
+
+class UserLogi(Base):
+    __tablename__ = 'user_logi'
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey('users.id'))
+    date_time: Mapped[str]
+    command: Mapped[str]
+
 
   
