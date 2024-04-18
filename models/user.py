@@ -29,5 +29,10 @@ class UserLogi(Base):
     date_time: Mapped[str]
     command: Mapped[str]
 
-
-  
+class UserWho(Base):
+    __tablename__ = 'user_who'
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey('users.id'))
+    message_id: Mapped[int]
+    chat_id: Mapped[int]
+    result: Mapped[str]

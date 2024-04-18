@@ -4,36 +4,209 @@ import time
 from datetime import datetime, timedelta
 
 from sqlalchemy import insert, select, exists, update
+from telebot.apihelper import ApiException
+
 from connection.db import Session
 from telebot import types
 import telebot
-from models.user import User, Eco, UserLogi
+from models.user import User, Eco, UserLogi, UserWho
 
 banword = ['nigger', 'крутой', 'прошмандовка Aruku', 'nigga', 'сучка', 'naga', 'cын булочника','приёмыш', 'подвальный ребёнок', 'ниггер', 'бездарь', 'нига', 'ушлёпок', 'уебан', 'тварь', 'нага', 'гомодрил', 'сын миража', 'faggot', 'шлюха', 'пидор', 'пидорас', 'педик', 'гомик', 'петух']
 special_for_Remedyv = ['прошмандовка Aruku', 'сучка', 'шлюха', 'тварь', 'лучшая']
 # Указываем токен вашего бота
 TOKEN = '6734713504:AAH1v07_y86elzFk0Y6rL-QsRYOi_FUmjQ4'
 
+
 # Создаем экземпляр бота
 bot = telebot.TeleBot(TOKEN)
-
+none = {6311509652:'Стася'}
 # Обработчик команды /start
+
+moralfuck = ['моралфак', 'moralfuck', 'моралфаки', 'моралфака', 'моралкек']
+stupid=open('media/stupid.MOV', 'rb')
+
+@bot.message_handler(commands=['secret'])
+def test(message):
+    bot.delete_messages(message.chat.id,message_ids=[message.message_id, message.message_id-1, message.message_id-2])
+
+
+@bot.message_handler(commands=['who'])
+def who(message):
+    # Генерируем случайное слово из списка banword
+    random_word = random.choice(banword)
+
+    # Записываем информацию о пользователе в базу данных
+    new_who_entry = UserWho(user_id=message.from_user.id, message_id=message.message_id, chat_id=message.chat.id, result=random_word)
+    with Session.begin() as session:
+        session.add(new_who_entry)
+        session.commit()
+
+    # Создаем кнопку для отправки пользователю
+    markup = types.InlineKeyboardMarkup(row_width=2)
+    btn1 = types.InlineKeyboardButton(f'кто?', callback_data=f'who_result_{message.from_user.id}')
+    markup.add(btn1, row_width=8)
+    bot.send_message(message.chat.id, 'тык', reply_markup=markup)
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith('who_result_'))
+def handle_who_result(call):
+    chat_id = call.message.chat.id  # Получаем chat_id
+    message_id = call.message.message_id - 1  # Получаем message_id
+    # Получаем информацию о пользователе из базы данных
+    with Session() as session:
+        user_info = session.query(UserWho).filter_by(chat_id=chat_id, message_id=message_id).first()
+        username = session.query(User).filter_by(id=user_info.user_id).first()
+        if username:
+            if username.username != None:
+                if user_info:
+                    result = user_info.result
+                    bot.answer_callback_query(call.id, f'{username.username},  сегодня {result} ❤️', show_alert=True)
+                else:
+                    bot.send_message(chat_id, "извините")
+            else:
+                bot.send_message(chat_id, "извините")
+        else:
+            bot.send_message(chat_id, "извините")
+
+
+@bot.message_handler(commands=['hug'])
+def pat(message):
+    hug = open('media/hug.gif', 'rb')
+    user_active = message.from_user.username
+    if message.reply_to_message:
+        user_passive = message.reply_to_message.from_user.username
+        if user_active == 'Remedyv':
+            bot.reply_to(message, f'{user_active} обнялa {user_passive}')
+            bot.send_animation(message.chat.id, hug)
+
+        else:
+            bot.reply_to(message, f'{user_active} обнял {user_passive}')
+            bot.send_animation(message.chat.id, hug)
+
+@bot.message_handler(commands=['kiss'])
+def pat(message):
+    kiss = open('media/kiss.gif', 'rb')
+    user_active = message.from_user.username
+    if message.reply_to_message:
+        user_passive = message.reply_to_message.from_user.username
+        if user_active == 'Remedyv':
+            bot.reply_to(message, f'{user_active} поцеловалa {user_passive}')
+            bot.send_animation(message.chat.id, kiss)
+        else:
+            bot.reply_to(message, f'{user_active} поцеловал {user_passive}')
+            bot.send_animation(message.chat.id, kiss)
+
+@bot.message_handler(commands=['hm'])
+def pat(message):
+    fuck = open('media/fuck.gif', 'rb')
+    user_active = message.from_user.username
+    if message.reply_to_message:
+        user_passive = message.reply_to_message.from_user.username
+        bot.reply_to(message, f'{user_active} *кхм* {user_passive}')
+        bot.send_animation(message.chat.id, fuck)
+@bot.message_handler(commands=['f_ck'])
+def pat(message):
+    nahui = open('media/nahui.gif', 'rb')
+    user_active = message.from_user.username
+    if message.reply_to_message:
+        user_passive = message.reply_to_message.from_user.username
+        if user_active == 'Remedyv':
+            bot.reply_to(message, f'{user_active} послала нахуй {user_passive}')
+            bot.send_animation(message.chat.id, nahui)
+        else:
+            bot.reply_to(message, f'{user_active} послал нахуй {user_passive}')
+            bot.send_animation(message.chat.id, nahui)
+
+@bot.message_handler(commands=['hit'])
+def pat(message):
+    kick = open('media/kill.gif', 'rb')
+    user_active = message.from_user.username
+    if message.reply_to_message:
+        user_passive = message.reply_to_message.from_user.username
+        if user_active == 'Remedyv':
+            bot.reply_to(message, f'{user_active} ударила {user_passive}')
+            bot.send_animation(message.chat.id, kick)
+        else:
+            bot.reply_to(message, f'{user_active} ударил {user_passive}')
+            bot.send_animation(message.chat.id, kick)
+
+@bot.message_handler(commands=['nip'])
+def pat(message):
+    nip = open('media/nip.gif.mp4', 'rb')
+    nip_rem = open('media/nip_rem.mp4', 'rb')
+    user_active = message.from_user.username
+    if message.reply_to_message:
+        user_passive = message.reply_to_message.from_user.username
+        if user_active == 'Remedyv':
+            bot.reply_to(message, f'{user_active} укусила {user_passive}')
+            bot.send_animation(message.chat.id, nip_rem)
+        else:
+            bot.reply_to(message, f'{user_active} укусил {user_passive}')
+            bot.send_animation(message.chat.id, nip)
+
+@bot.message_handler(commands=['pat'])
+def pat(message):
+    hug = open('media/hug_women.mp4', 'rb')
+    hug_rem = open('media/hug_rem.gif', 'rb')
+    user_active = message.from_user.username
+    if message.reply_to_message:
+        user_passive = message.reply_to_message.from_user.username
+        if user_active == 'Remedyv':
+            bot.reply_to(message, f'{user_active} погладила {user_passive}')
+            bot.send_animation(message.chat.id, hug)
+        else:
+            bot.reply_to(message, f'{user_active} погладил {user_passive}')
+            bot.send_animation(message.chat.id, hug)
+
+
+@bot.message_handler(commands=['invite'])
+def pat(message):
+    hug = open('media/taringa-anime.gif', 'rb')
+    user_active = message.from_user.username
+    if message.reply_to_message:
+        user_passive = message.reply_to_message.from_user.username
+        # if not user_passive:
+        #     user_passive = 'haku'
+
+        bot.reply_to(message, f'{user_active} зовет {user_passive} играть в гусей')
+        bot.send_animation(message.chat.id, hug)
+@bot.message_handler(commands=['wait'])
+def pat(message):
+    hug = open('media/cs.gif', 'rb')
+    hug_remi = open('media/wait_rem.gif', 'rb')
+    user_active = message.from_user.username
+    if message.reply_to_message:
+
+        user_passive = message.reply_to_message.from_user.username
+        if user_active == 'Remedyv':
+
+            bot.reply_to(message, f'{user_active} ждёт {user_passive} в Counter-Strike')
+            bot.send_animation(message.chat.id, hug_remi)
+        else:
+            bot.reply_to(message, f'{user_active} ждёт {user_passive} в Counter-Strike')
+            bot.send_animation(message.chat.id, hug)
+
 @bot.message_handler(commands=['start'])
 
 def entered_users(message):
-    with Session.begin() as session:
-        user_have = session.query(exists().where(User.id == message.from_user.id)).scalar()
-        if not user_have:
-            users_dict = dict(id = message.from_user.id, name = message.from_user.first_name, username = message.from_user.username)
-            query = insert(User).values(users_dict)
-            balance_dict = dict(id = message.from_user.id, balance = 100)
-            query1 = insert(Eco).values(balance_dict)
-            session.execute(query)
-            session.execute(query1)
-            session.commit()
-            bot.send_message(message.chat.id, 'Вы зарегистрировались✅')
-        else:
-            bot.send_message(message.chat.id, 'Вы уже зарегались✅')
+
+    if message.from_user.username== None:
+        bot.send_message(message.chat.id, 'Введите свой username')
+    else:
+        with Session.begin() as session:
+            user_have = session.query(exists().where(User.id == message.from_user.id)).scalar()
+            if not user_have:
+                users_dict = dict(id = message.from_user.id, name = message.from_user.first_name, username = message.from_user.username)
+                query = insert(User).values(users_dict)
+                balance_dict = dict(id = message.from_user.id, balance = 100)
+                query1 = insert(Eco).values(balance_dict)
+                session.execute(query)
+                session.execute(query1)
+                session.commit()
+                bot.send_message(message.chat.id, 'Вы зарегистрировались✅')
+
+            else:
+                bot.send_message(message.chat.id, 'Вы уже зарегались✅')
 
 @bot.message_handler(commands=['coinflip'])
 
@@ -78,12 +251,12 @@ def process_bet(message):
             session.execute(query_update_balance)
             session.commit()
 
-        markup = types.InlineKeyboardMarkup(row_width=2)
-        btn1 = types.InlineKeyboardButton('Орёл', callback_data='орёл')
-        btn2 = types.InlineKeyboardButton('Новосиб', callback_data='новосиб')
-        markup.add(btn1, btn2)
-        bot.send_message(message.chat.id, "Выберите орёл или новосиб:", reply_markup=markup)
-        
+            markup = types.InlineKeyboardMarkup(row_width=2)
+            btn1 = types.InlineKeyboardButton('Орёл', callback_data='орёл')
+            btn2 = types.InlineKeyboardButton('Новосиб', callback_data='новосиб')
+            markup.add(btn1, btn2)
+            bot.send_message(message.chat.id, "Выберите орёл или новосиб:", reply_markup=markup)
+
 
 @bot.callback_query_handler(func=lambda call: call.data in ['орёл', 'новосиб'])
 def process_coin_choice(call):
@@ -251,10 +424,36 @@ def check_balance(message):
             balance = session.query(Eco.balance).filter(Eco.id == message.from_user.id).scalar()
             bot.reply_to(message, f"Ваш баланс: {balance}💰")
 
+# bot.set_my_commands(
+#     commands=[telebot.types.BotCommand('start', 'я сказала стартуем!'),
+#                 telebot.types.BotCommand('help', 'ЭЭ помогите'),
+#                 telebot.types.BotCommand('balance', 'безупречный баланс'),
+#               telebot.types.BotCommand('coinflip', 'брось меня'),
+#               telebot.types.BotCommand('who', 'кто ты по жизни'),
+#               telebot.types.BotCommand('love @', 'любовь'),
+#               telebot.types.BotCommand('door', 'осторожно, двери закрываются'),
+#
+#                 telebot.types.BotCommand('give', 'дай мне деньги'),
+#                 telebot.types.BotCommand('give', 'дай мне деньги'),
+                    #telebot.types.BotCommand('balance', 'безупречный баланс'),
+        #               telebot.types.BotCommand('coinflip', 'брось меня'),
+        #               telebot.types.BotCommand('who', 'кто ты по жизни'),
+        #               telebot.types.BotCommand('love @', 'любовь'),
+        #               telebot.types.BotCommand('door', 'осторожно, двери закрываются'),
+        #
+        #                 telebot.types.BotCommand('give', 'дай мне деньги'),
+        #                 telebot.types.BotCommand('give', 'дай мне деньги'),
 
-@bot.message_handler(commands=['гладить'])
-def gladit(message):
-    bot.reply_to(message, 'заебись работает')
+
+#               ],
+#               scope=telebot.types.BotCommandScopeChat(-1002035354644)
+#
+#
+#
+# )
+# @bot.message_handler(commands=['гладить'])
+# def gladit(message):
+#     bot.reply_to(message, 'заебись работает')
 
 @bot.message_handler(commands=['love'])
 def love_is(message):
@@ -284,46 +483,48 @@ def handle_help(message):
     help_text += "/who - узнать кто ты по жизни\n"
     bot.send_message(message.chat.id, help_text)
 
-@bot.message_handler(commands=['who'])
+# @bot.message_handler(commands=['who'])
+#
+# def who_i_am(message):
+#     if len(message.text.split()) > 1:
+#         username = message.text.split()[1]
+#     else:
+#         username = None
+#
+#     if username:
+#         if username == '@Remedyv':
+#             username = 'Remedyv'
+#             bot.reply_to(message, f"Сегодня {username} - {random.choice(special_for_Remedyv)}")
+#             return
+#         if username.startswith('@'):
+#             username = username[1:]
+#
+#         with Session.begin() as session:
+#             user = session.query(User).filter(User.username == username).first()
+#             if user:
+#                 bot.reply_to(message, f"Сегодня {username} - {random.choice(banword)}")
+#             else:
+#                 name = session.query(User).filter(User.name == username).first()
+#                 if name:
+#                     bot.reply_to(message, f"Сегодня {name} - {random.choice(banword)}")
+#                 else:
+#                     bot.reply_to(message, f"Пользователь {username} не найден.")
+#     else:
+#         if message.from_user.id == 979795224:
+#             bot.reply_to(message, f"Сегодня {message.from_user.username} - {random.choice(special_for_Remedyv)}")
+#         else:
+#             with Session.begin() as session:
+#                 user = session.query(User).filter(User.username == message.from_user.username).first()
+#                 if user != None:
+#                     bot.reply_to(message, f"Сегодня {message.from_user.username} - {random.choice(banword)}")
+#                 else:
+#                     name = session.query(User).filter(User.name == message.from_user.first_name).first()
+#                     if name:
+#                         bot.reply_to(message, f"Сегодня {name} - {random.choice(banword)}")
+#                     else:
+#                         bot.reply_to(message, f"Пользователь {username} не найден.")
 
-def who_i_am(message):
-    if len(message.text.split()) > 1:
-        username = message.text.split()[1]
-    else:
-        username = None
 
-    if username:
-        if username == '@Remedyv':
-            username = 'Remedyv'
-            bot.reply_to(message, f"Сегодня {username} - {random.choice(special_for_Remedyv)}")
-            return
-        if username.startswith('@'):
-            username = username[1:]
-
-        with Session.begin() as session:
-            user = session.query(User).filter(User.username == username).first()
-            if user:
-                bot.reply_to(message, f"Сегодня {username} - {random.choice(banword)}")
-            else:
-                name = session.query(User).filter(User.name == username).first()
-                if name:
-                    bot.reply_to(message, f"Сегодня {name} - {random.choice(banword)}")
-                else:
-                    bot.reply_to(message, f"Пользователь {username} не найден.")
-    else:
-        if message.from_user.id == 979795224:
-            bot.reply_to(message, f"Сегодня {message.from_user.username} - {random.choice(special_for_Remedyv)}")
-        else:
-            with Session.begin() as session:
-                user = session.query(User).filter(User.username == message.from_user.username).first()
-                if user != None:
-                    bot.reply_to(message, f"Сегодня {message.from_user.username} - {random.choice(banword)}")
-                else:
-                    name = session.query(User).filter(User.name == message.from_user.first_name).first()
-                    if name:
-                        bot.reply_to(message, f"Сегодня {name} - {random.choice(banword)}")
-                    else:
-                        bot.reply_to(message, f"Пользователь {username} не найден.")
 
         # else:
         #     if not message.from_user.username:
@@ -332,20 +533,29 @@ def who_i_am(message):
         #         bot.reply_to(message, f"Сегодня {message.from_user.username} - {random.choice(banword)}")
 
 # Обработчик всех текстовых сообщений в беседе
-@bot.message_handler(content_types=['text'])
 
-def check_word(message):
-    # if message.text.lower() == 'че' or message.text.lower() == 'чё' :
-    #     bot.send_message(message.chat.id,'а ни че нормально общайся')
-    if (message.text == '5 причин зайти на сервер ARUKU'):
-        markup2 = types.ReplyKeyboardMarkup(resize_keyboard=True)
-        button1 = types.KeyboardButton('Тетрис с MoralFuck')
-        button2 = types.KeyboardButton('/coinflip')
-        button3 = types.KeyboardButton('Приватка с MoralFuck')
-        button4 = types.KeyboardButton('MoralFuck')
-        button5 = types.KeyboardButton('MoralFuck в 115-й')
-        markup2.add(button1,button2, button3, button4, button5)
-        bot.send_message(message.chat.id, 'Выбери причину', reply_markup=markup2)
+
+
+
+# @bot.message_handler(content_types=['text'])
+#
+# def check_word(message):
+#     # if message.text.lower() == 'че' or message.text.lower() == 'чё' :
+#     #     bot.send_message(message.chat.id,'а ни че нормально общайся')
+#     if (message.text == '5 причин зайти на сервер ARUKU'):
+#         markup2 = types.ReplyKeyboardMarkup(resize_keyboard=True)
+#         button1 = types.KeyboardButton('Тетрис с MoralFuck')
+#         button2 = types.KeyboardButton('/coinflip')
+#         button3 = types.KeyboardButton('Приватка с MoralFuck')
+#         button4 = types.KeyboardButton('MoralFuck')
+#         button5 = types.KeyboardButton('MoralFuck в 115-й')
+#         markup2.add(button1,button2, button3, button4, button5)
+#         bot.send_message(message.chat.id, 'Выбери причину', reply_markup=markup2)
+
+
+
+
+
 
 
     # elif message.text == 'Тетрис с MoralFuck':
@@ -369,5 +579,83 @@ def check_word(message):
     #     bot.send_message(message.chat.id, 'Идёт нахуй')
 
 
+
+
+
+
+
+
+
+
+
+
+
+# @bot.message_handler(chat_id=[-1002094586262], commands=['update'])
+# def update_command(message):
+# bot.set_my_commands(
+#     commands=[
+#     telebot.types.BotCommand('start', 'я сказала стартуем!'),
+#                 telebot.types.BotCommand('help', 'ЭЭ помогите'),
+#               telebot.types.BotCommand('balance', 'безупречный баланс'),
+#               telebot.types.BotCommand('coinflip', 'брось меня'),
+#               telebot.types.BotCommand('who', 'кто ты по жизни'),
+#               telebot.types.BotCommand('love ', 'я люблю'),
+#               telebot.types.BotCommand('door', 'осторожно, двери закрываются'),
+#
+#               telebot.types.BotCommand('give', 'дай мне деньги'),
+#
+#               telebot.types.BotCommand('hm', 'хммм'),
+#               telebot.types.BotCommand('hug', 'обнять'),
+#               telebot.types.BotCommand('nip','укусить'),
+#               telebot.types.BotCommand('hit','ударить'),
+#               telebot.types.BotCommand('f_ck', 'послать'),
+#               telebot.types.BotCommand('wait','ждать'),
+#
+#               telebot.types.BotCommand('invite','позвать'),
+#               telebot.types.BotCommand('pat', 'гладить'),
+#                 telebot.types.BotCommand('kiss', 'поцеловать'),
+#                 telebot.types.BotCommand('test', 'test')
+#
+#               ],
+#               scope=telebot.types.BotCommandScopeChat(-1002094586262)
+# )
+
+#
+
+
+# @bot.message_handler(chat_id=[-1002094586262], commands=['update'])
+# def update_command(message):
+#     bot.set_my_commands(
+#     commands=[telebot.types.BotCommand('door', 'осторожно, двери закрываются')
+#
+#               ],
+#               scope=telebot.types.BotCommandScopeChat(message.chat.id)
+
+
+
+# telebot.types.BotCommand('coinflip', 'брось меня'),
+
+
+
+# @bot.message_handler(chat_id=[-1002035354644], commands=['update'])
+# def update_command(message):
+#
+#     bot.set_my_commands(
+#     commands=[telebot.types.BotCommand('start', 'я сказала стартуем!'),
+#               telebot.types.BotCommand('help', 'ЭЭ помогите'),
+#               telebot.types.BotCommand('balance', 'безупречный баланс'),
+#               telebot.types.BotCommand('coinflip', 'брось меня'),
+#               telebot.types.BotCommand('who', 'кто ты по жизни'),
+#               telebot.types.BotCommand('love', 'я люблю тебя'),
+#               telebot.types.BotCommand('door', 'осторожно, двери закрываются'),
+#               telebot.types.BotCommand('give', 'дай мне деньги')
+#               ],
+#               scope=telebot.types.BotCommandScopeChat(message.chat.id)
+#
+#
+#
+# )
+
+
 # Запускаем бота
-bot.polling()
+bot.polling(non_stop=True)
